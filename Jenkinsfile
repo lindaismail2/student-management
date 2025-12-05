@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven' // Nom configuré dans Jenkins Global Tool Configuration
+        // Le nom doit correspondre à la configuration de Maven dans Jenkins
+        maven 'maven' 
     }
 
     stages {
@@ -10,35 +11,40 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "🎉 Étape 1: Préparation de l'environnement"
-                bat "echo Checkout OK"
+                // Commande d'affichage simple - bat remplacé par sh
+                sh "echo Checkout OK" 
             }
         }
 
         stage('Clean') {
             steps {
                 echo "🧹 Nettoyage du dossier target"
-                bat "rmdir /s /q target"
+                // Commande Windows 'rmdir /s /q target' remplacée par la commande Linux 'rm -rf target'
+                sh "rm -rf target" 
             }
         }
 
         stage('Build') {
             steps {
                 echo "🔨 Build du projet avec Maven"
-                bat "mvn clean package -DskipTests=true"
+                // La commande Maven reste la même, mais elle est exécutée via sh
+                sh "mvn clean package -DskipTests=true" 
             }
         }
 
         stage('Test') {
             steps {
                 echo "🧪 Tests ignorés pour le moment"
-                bat "echo Tests skipped"
+                // Commande d'affichage simple - bat remplacé par sh
+                sh "echo Tests skipped"
             }
         }
 
         stage('Deploy') {
             steps {
                 echo "🚀 Déploiement simulé"
-                bat "echo Deploy OK"
+                // Commande d'affichage simple - bat remplacé par sh
+                sh "echo Deploy OK"
             }
         }
     }
