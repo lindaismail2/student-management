@@ -1,106 +1,114 @@
 pipeline {
-    agent any
+agent any
 
-    tools {
-        maven 'maven'      // Nom EXACT de Maven dans Jenkins
-        jdk 'JAVA_HOME'      // Nom EXACT du JDK dans Jenkins
+```
+tools {
+    maven 'maven'        // Nom EXACT de Maven dans Jenkins (Manage Jenkins > Tools)
+    jdk   'JAVA_HOME'    // Nom EXACT du JDK dans Jenkins (ex: 'jdk17' si c'est ça chez toi)
+}
+
+environment {
+    GIT_BRANCH = 'main'
+    GIT_URL    = 'https://github.com/lindaismail2/student-management.git'
+    IMAGE_NAME = 'student-management'
+    IMAGE_TAG  = '1.0'
+    // Credentials Jenkins -> DockerHub (Username/Password)
+    DOCKER_CREDS = 'dockerhub-credentials'
+}
+
+stages {
+
+    stage('Checkout') {
+        steps {
+            echo "📥 Clone du repository..."
+            git branch: "${GIT_BRANCH}", url: "${GIT_URL}"
+            echo "✅ Clone terminé"
+        }
     }
 
-    stages {
-
-        stage('1️⃣ Clone Repository') {
-            steps {
-                echo '📥 Clonage du repository Git...'
-                git branch: 'main',
-                    url: 'https://github.com/lindaismail2/student-management.git'
-                echo '✅ Clonage terminé'
-            }
+    stage('Clean') {
+        steps {
+            echo "🧹 Nettoyage du dossier target"
+            sh "rm -rf target"
         }
-        
+    }
 
-        stage('2️⃣ Build Project') {
-            steps {
-                echo '🔨 Compilation du projet avec Maven...'
-                sh 'mvn clean compile -DskipTests'
-                echo '✅ Build terminé'
-            }
+    stage('Build (Compile)') {
+        steps {
+            echo "🔨 Compilation Maven (sans tests)"
+            sh "mvn clean compile -DskipTests"
+            echo "✅ Compilation terminée"
         }
+    }
 
-        stage('3️⃣ Package Project') {
-            steps {
-                echo '📦 Packaging du projet...'
-                sh 'mvn package -DskipTests'
-                echo '✅ Packaging terminé'
-            }
+    stage('Test') {
+        steps {
+            echo "🧪 Tests ignorés pour le moment"
+            sh "echo Tests skipped"
         }
+    }
 
-        // stage('4️⃣ SonarQube Analysis') {
-            // steps {
-                // echo '🔍 Analyse de la qualité du code avec SonarQube...'
-                // withSonarQubeEnv('SonarQube') {
-                    // sh """
-                    // mvn sonar:sonar \
-                    // -Dsonar.projectKey=student-management \
-                    // -Dsonar.projectName=student-management
-                    // """
-                // }
-            // }
-        // }
-
-        stage('5️⃣ Package JAR') {
-            steps {
-                echo '📦 Packaging final en JAR...'
-                sh 'mvn clean package -DskipTests'
-                echo '✅ JAR prêt'
-            }
+    stage('Package JAR') {
+        steps {
+            echo "📦 Packaging final en JAR"
+            sh "mvn clean package -DskipTests"
+            echo "✅ JAR prêt"
         }
+    }
 
-        stage('6️⃣ Archive Artifact') {
-            steps {
-                echo '📁 Archivage du fichier JAR...'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
+    stage('Archive Artifact') {
+        steps {
+            echo "📁 Archivage du JAR"
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
-        stage('7️⃣ Build Docker Image') {
-    steps {
-        echo '🐳 Construction de l’image Docker student-management...'
-        sh '''
-        docker build -t student-management:1.0 .
-        '''
-        echo '✅ Image Docker créée avec succès'
+    }
+
+    stage('Build Docker Image') {
+        steps {
+            echo "🐳 Build de l'image Docker"
+            sh """
+               docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+            """
+            echo "✅ Image Docker construite"
+        }
+    }
+
+    stage('Push Docker Image') {
+        steps {
+            echo "🚀 Push vers Docker Hub"
+            withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS}",
+                                             usernameVariable: 'DOCKERHUB_USER',
+                                             passwordVariable: 'DOCKERHUB_PASS')]) {
+
+                sh """
+                   echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
+                   docker tag ${IMAGE_NAME}:${IMAGE_TAG} \$DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                   docker push \$DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+            echo "✅ Push terminé"
+        }
+    }
+
+    stage('Deploy') {
+        steps {
+            echo "🚀 Déploiement simulé"
+            sh "echo Deploy OK"
+        }
     }
 }
 
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    // Se connecter à Docker Hub (prends tes identifiants Jenkins)
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
-                                                     usernameVariable: 'DOCKERHUB_USER', 
-                                                     passwordVariable: 'DOCKERHUB_PASS')]) {
-                        // Login Docker
-                        sh "echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin"
-                        
-                        // Tag si nécessaire
-                        sh "docker tag student-management:1.0 $DOCKERHUB_USER/student-management:1.0"
-
-                        // Push de l'image
-                        sh "docker push $DOCKERHUB_USER/student-management:1.0"
-                    }
-                }
-            }
-        }
-    
-
-
+post {
+    success {
+        echo "🎉 Pipeline terminé avec succès"
     }
-
-    post {
-        success {
-            echo '🎉 Pipeline terminé avec succès'
-        }
-        failure {
-            echo '❌ Le pipeline a échoué'
-        }
+    failure {
+        echo "❌ Le pipeline a échoué"
     }
+    always {
+        echo "✔️ Pipeline terminé!"
+    }
+}
+```
+
 }
