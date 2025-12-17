@@ -2,56 +2,105 @@ pipeline {
     agent any
 
     tools {
-        // Le nom doit correspondre à la configuration de Maven dans Jenkins
-        maven 'maven' 
+        maven 'maven'      // Nom EXACT de Maven dans Jenkins
+        jdk 'JAVA_HOME'      // Nom EXACT du JDK dans Jenkins
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('1️⃣ Clone Repository') {
             steps {
-                echo "🎉 Étape 1: Préparation de l'environnement"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Checkout OK" 
+                echo '📥 Clonage du repository Git...'
+                git branch: 'main',
+                    url: 'https://github.com/lindaismail2/student-management.git'
+                echo '✅ Clonage terminé'
+            }
+        }
+        
+
+        stage('2️⃣ Build Project') {
+            steps {
+                echo '🔨 Compilation du projet avec Maven...'
+                sh 'mvn clean compile -DskipTests'
+                echo '✅ Build terminé'
             }
         }
 
-        stage('Clean') {
+        stage('3️⃣ Package Project') {
             steps {
-                echo "🧹 Nettoyage du dossier target"
-                // Commande Windows 'rmdir /s /q target' remplacée par la commande Linux 'rm -rf target'
-                sh "rm -rf target" 
+                echo '📦 Packaging du projet...'
+                sh 'mvn package -DskipTests'
+                echo '✅ Packaging terminé'
             }
         }
 
-        stage('Build') {
+        // stage('4️⃣ SonarQube Analysis') {
+            // steps {
+                // echo '🔍 Analyse de la qualité du code avec SonarQube...'
+                // withSonarQubeEnv('SonarQube') {
+                    // sh """
+                    // mvn sonar:sonar \
+                    // -Dsonar.projectKey=student-management \
+                    // -Dsonar.projectName=student-management
+                    // """
+                // }
+            // }
+        // }
+
+        stage('5️⃣ Package JAR') {
             steps {
-                echo "🔨 Build du projet avec Maven"
-                // La commande Maven reste la même, mais elle est exécutée via sh
-                sh "mvn clean package -DskipTests=true" 
+                echo '📦 Packaging final en JAR...'
+                sh 'mvn clean package -DskipTests'
+                echo '✅ JAR prêt'
             }
         }
 
-        stage('Test') {
+        stage('6️⃣ Archive Artifact') {
             steps {
-                echo "🧪 Tests ignorés pour le moment"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Tests skipped"
+                echo '📁 Archivage du fichier JAR...'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
+        stage('7️⃣ Build Docker Image') {
+    steps {
+        echo '🐳 Construction de l’image Docker student-management...'
+        sh '''
+        docker build -t student-management:1.0 .
+        '''
+        echo '✅ Image Docker créée avec succès'
+    }
+}
 
-        stage('Deploy') {
+        stage('Push Docker Image') {
             steps {
-                echo "🚀 Déploiement simulé"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Deploy OK"
+                script {
+                    // Se connecter à Docker Hub (prends tes identifiants Jenkins)
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                     usernameVariable: 'DOCKERHUB_USER', 
+                                                     passwordVariable: 'DOCKERHUB_PASS')]) {
+                        // Login Docker
+                        sh "echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin"
+                        
+                        // Tag si nécessaire
+                        sh "docker tag student-management:1.0 $DOCKERHUB_USER/student-management:1.0"
+
+                        // Push de l'image
+                        sh "docker push $DOCKERHUB_USER/student-management:1.0"
+                    }
+                }
             }
         }
+    
+
+
     }
 
     post {
-        always {
-            echo "✔️ Pipeline terminé!"
+        success {
+            echo '🎉 Pipeline terminé avec succès'
+        }
+        failure {
+            echo '❌ Le pipeline a échoué'
         }
     }
 }
