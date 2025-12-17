@@ -1,57 +1,84 @@
 pipeline {
-    agent any
+agent any
 
-    tools {
-        // Le nom doit correspondre à la configuration de Maven dans Jenkins
-        maven 'maven' 
-    }
+```
+tools {
+    maven 'maven'
+}
 
-    stages {
+environment {
+    IMAGE_NAME = "student-management"
+    IMAGE_TAG  = "1.0"
+    DOCKER_CREDS = "dockerhub-credentials"   // ID des credentials dans Jenkins
+}
 
-        stage('Checkout') {
-            steps {
-                echo "🎉 Étape 1: Préparation de l'environnement"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Checkout OK" 
-            }
-        }
+stages {
 
-        stage('Clean') {
-            steps {
-                echo "🧹 Nettoyage du dossier target"
-                // Commande Windows 'rmdir /s /q target' remplacée par la commande Linux 'rm -rf target'
-                sh "rm -rf target" 
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo "🔨 Build du projet avec Maven"
-                // La commande Maven reste la même, mais elle est exécutée via sh
-                sh "mvn clean package -DskipTests=true" 
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo "🧪 Tests ignorés pour le moment"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Tests skipped"
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo "🚀 Déploiement simulé"
-                // Commande d'affichage simple - bat remplacé par sh
-                sh "echo Deploy OK"
-            }
+    stage('Checkout') {
+        steps {
+            echo "🎉 Étape 1: Préparation de l'environnement"
+            sh "echo Checkout OK"
         }
     }
 
-    post {
-        always {
-            echo "✔️ Pipeline terminé!"
+    stage('Clean') {
+        steps {
+            echo "🧹 Nettoyage du dossier target"
+            sh "rm -rf target"
         }
     }
+
+    stage('Build') {
+        steps {
+            echo "🔨 Build du projet avec Maven"
+            sh "mvn clean package -DskipTests=true"
+        }
+    }
+
+    stage('Test') {
+        steps {
+            echo "🧪 Tests ignorés pour le moment"
+            sh "echo Tests skipped"
+        }
+    }
+
+    stage('Build Docker Image') {
+        steps {
+            echo "🐳 Construction de l'image Docker"
+            sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            sh "docker images | grep ${IMAGE_NAME} || true"
+        }
+    }
+
+    stage('Push DockerHub') {
+        steps {
+            echo "🚀 Push de l'image vers DockerHub"
+
+            withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDS}",
+                                             usernameVariable: 'DOCKERHUB_USER',
+                                             passwordVariable: 'DOCKERHUB_PASS')]) {
+                sh """
+                    echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} \$DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push \$DOCKERHUB_USER/${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+    }
+
+    stage('Deploy') {
+        steps {
+            echo "🚀 Déploiement simulé"
+            sh "echo Deploy OK"
+        }
+    }
+}
+
+post {
+    always {
+        echo "✔️ Pipeline terminé!"
+    }
+}
+```
+
 }
