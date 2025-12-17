@@ -1,7 +1,6 @@
 pipeline {
 agent any
 
-```
 tools {
     maven 'maven'
 }
@@ -80,7 +79,4 @@ post {
     always {
         echo "✔️ Pipeline terminé!"
     }
-}
-```
-
 }
