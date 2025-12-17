@@ -26,7 +26,7 @@ stages {
             sh "rm -rf target"
         }
     }
-
+}
     stage('Build') {
         steps {
             echo "🔨 Build du projet avec Maven"
