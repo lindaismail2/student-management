@@ -1,5 +1,5 @@
-FROM alpine
-RUN apk add openjdk17
+FROM eclipse-temurin:17-jdk-alpine
+
 WORKDIR /app
 
 COPY target/*.jar app.jar
